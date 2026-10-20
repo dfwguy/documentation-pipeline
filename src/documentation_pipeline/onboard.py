@@ -12,6 +12,7 @@ from pathlib import Path
 
 import tomlkit
 from copier import run_copy
+from markdown_it import MarkdownIt
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
@@ -91,8 +92,15 @@ def inspect(root, source):
     for document in documents:
         text = document.read_text(encoding='utf-8')
         if document.suffix.lower() == '.md':
-            for language in sorted(set(re.findall(r'^```(pam|mermaid|caddyfile)\s*$', text, re.MULTILINE))):
-                decisions.append(f'{document.relative_to(root)}: the pinned renderer has no {language} lexer; select plain text or add centralized rendering support.')
+            # Parse list/blockquote nesting, tilde fences, and info strings as Markdown.
+            # A regex also mistakes fence examples inside a larger code block for code.
+            for token in MarkdownIt('commonmark').parse(text):
+                if token.type != 'fence' or not token.info.strip():
+                    continue
+                language = token.info.split()[0]
+                if language in {'pam', 'mermaid', 'caddyfile'}:
+                    line = token.map[0] + 1
+                    decisions.append(f'{document.relative_to(root)}:{line}: the pinned renderer has no {language} lexer; select plain text or add centralized rendering support.')
             for link in re.findall(r'\[[^\]]*\]\(([^)\s]+/)\)', text):
                 if '://' in link:
                     continue
@@ -112,6 +120,43 @@ def navigation(root, source, documents, title):
     return f'{title}\n{"=" * len(title)}\n\n.. toctree::\n   :maxdepth: 3\n\n' + ''.join(f'   {entry}\n' for entry in entries)
 
 
+def verify_adoption(root, ci, requested):
+    """Verify ownership/settings while preserving all consumer edits on repeat runs."""
+    saved = YAML_IO.load((root / '.copier-docs-answers.yml').read_text())
+    if not isinstance(saved, dict) or not saved.get('_src_path') or not saved.get('_commit'):
+        raise DecisionRequired('Incomplete saved answers; restore the adoption record before continuing.')
+    if any(saved.get(key) != value for key, value in requested.items()):
+        raise DecisionRequired('Requested settings differ from saved answers. Use copier update --answers-file .copier-docs-answers.yml to change settings.')
+    config = tomlkit.parse((root / '.docs-pipeline/config.toml').read_text())
+    expected = dict(title=saved['docs_title'], source_dir=saved['docs_source_dir'], navigation=saved['docs_nav'])
+    if any(config.get(key) != value for key, value in expected.items()):
+        raise DecisionRequired('Documentation settings differ from saved answers; reconcile them with copier update.')
+    if not (root / saved['docs_nav']).is_file():
+        raise DecisionRequired('Existing adoption has no navigation file; restore it before continuing.')
+    child = YAML_IO.load((root / '.docs-pipeline/ci.yml').read_text())
+    if not isinstance(child, dict):
+        raise DecisionRequired('The docs child pipeline must be a YAML mapping.')
+    includes = child.get('include', [])
+    if isinstance(includes, dict):
+        includes = [includes]
+    if not isinstance(includes, list) or not isinstance(child.get('variables'), dict):
+        raise DecisionRequired('The docs child pipeline requires an include list and variables mapping.')
+    shared = [item for item in includes if isinstance(item, dict) and item.get('file') == '/ci/docs.gitlab-ci.yml']
+    variables = child.get('variables', {})
+    if (len(shared) != 1 or shared[0].get('project') != saved['ci_project']
+            or shared[0].get('ref') != saved['ci_ref']
+            or variables.get('DOCS_PIPELINE_PROJECT') != saved['ci_project']
+            or variables.get('DOCS_PIPELINE_REF') != saved['ci_ref']):
+        raise DecisionRequired('Shared CI include, runtime checkout, and saved references must match. Reconcile them with copier update.')
+    job = ci.get('docs:pipeline', {})
+    trigger = job.get('trigger', {}) if isinstance(job, dict) else {}
+    trigger_includes = trigger.get('include', []) if isinstance(trigger, dict) else []
+    if isinstance(trigger_includes, dict):
+        trigger_includes = [trigger_includes]
+    if not isinstance(trigger_includes, list) or {'local': '.docs-pipeline/ci.yml'} not in trigger_includes:
+        raise DecisionRequired('Existing adoption is missing its docs child-pipeline trigger; restore or integrate it manually.')
+
+
 def plan(args):
     root = args.repository.resolve()
     if not root.is_dir():
@@ -123,12 +168,14 @@ def plan(args):
     if Path(nav).suffix != '.rst':
         raise DecisionRequired('Navigation must be a reStructuredText (.rst) file')
     ci, documents, findings, decisions = inspect(root, source)
-    if (root / '.copier-docs-answers.yml').exists():
-        raise DecisionRequired('Saved answers already exist. Use copier update --answers-file .copier-docs-answers.yml instead.')
     if not args.title.strip() or '\n' in args.title or '\r' in args.title:
         raise DecisionRequired('Title must be a nonempty single line')
     data = dict(docs_title=args.title, docs_source_dir=source, docs_nav=nav,
                 ci_project=args.ci_project, ci_ref=args.ci_ref)
+    if (root / '.copier-docs-answers.yml').exists():
+        verify_adoption(root, ci, data)
+        findings.append('Existing adoption verified; no files changed. Use copier update to change template versions or settings.')
+        return root, {}, findings, decisions
     with tempfile.TemporaryDirectory(prefix='docs-onboard-') as temp:
         run_copy(args.template, temp, data=data, defaults=True, vcs_ref=args.vcs_ref, quiet=True)
         generated = {p.relative_to(temp).as_posix(): p.read_text() for p in Path(temp).rglob('*') if p.is_file()}

@@ -47,4 +47,7 @@ and [update workflow](https://copier.readthedocs.io/en/stable/updating/)
 inform the adoption/update contract. GitLab's
 [CI YAML reference](https://docs.gitlab.com/ci/yaml/) describes includes, child
 pipelines, and Pages. The target self-managed instance still needs live CI Lint
-and a pipeline run after maintainers publish the shared ref.
+and a pipeline run for each new shared revision. The reported successful
+cluster-bringup GitLab build establishes working access for that run; earlier API
+403 responses do not establish a CI permission failure. Pages delivery and the
+historical runtime SHA still need independent verification.

@@ -7,7 +7,7 @@ name = "documentation-pipeline"
 version = "0.1.0"
 description = "Adopt centralized repo_docs builds and GitLab Pages with Copier"
 requires-python = ">=3.11"
-dependencies = ["copier==9.19.1", "ruamel.yaml==0.18.17", "tomlkit==0.13.3"]
+dependencies = ["copier==9.19.1", "ruamel.yaml==0.18.17", "tomlkit==0.13.3", "markdown-it-py==3.0.0"]
 
 [project.scripts]
 docs-onboard = "documentation_pipeline.onboard:main"

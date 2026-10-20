@@ -4,6 +4,7 @@ include:
     ref: {{ ci_ref | to_json }}
     file: /ci/docs.gitlab-ci.yml
 
+# Keep these values aligned with the include above; update ci_ref through Copier.
 variables:
   DOCS_PIPELINE_PROJECT: {{ ci_project | to_json }}
   DOCS_PIPELINE_REF: {{ ci_ref | to_json }}

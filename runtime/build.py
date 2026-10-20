@@ -46,6 +46,13 @@ def build(root):
             raise ValueError("Reserved document name _pipeline_index already exists")
         shutil.copytree(source, snapshot, ignore=ignore)
         shutil.copyfile(navigation, snapshot / "_pipeline_index.rst")
+        # repo_docs 0.39.2 adds version.js independently of the selector setting.
+        # We export one site without the parent versions/ layout that script needs.
+        sphinx_overrides = (
+            f"project = {config['title']!r}\n"
+            'highlight_language = "none"\n'
+            'html_js_files = [script for script in html_js_files if script != "version.js"]\n'
+        )
         repo_config = f'''[repo]
 name = "documentation"
 [repo.folders]
@@ -54,7 +61,7 @@ repo_deps = {json.dumps(str(runtime / "_deps"))}
 enabled = true
 project = "documentation"
 name = "Documentation"
-sphinx_conf_py_extra = {json.dumps('project = ' + repr(config['title']) + '\nhighlight_language = "none"\n')}
+sphinx_conf_py_extra = {json.dumps(sphinx_overrides)}
 python_paths = [{json.dumps(str(runtime / 'sphinx_ext'))}]
 extensions_extra = ["repository_links"]
 version = "1.0"

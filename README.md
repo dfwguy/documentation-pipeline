@@ -10,9 +10,12 @@ publishing jobs live here. Documentation source stays in the consumer repository
 - [Explanation: ownership and design](docs/explanation/design.md)
 - [Validation and known limits](docs/reference/validation.md)
 
-The first intended consumer is `nvis-ova/cluster-bringup`. This implementation is
-local development work on `feat/copier-docs-pipeline`; no release tag or shared
-GitLab ref has been published yet. Use local template copies for testing now.
+`nvis-ova/cluster-bringup` has adopted the published `feat/copier-docs-pipeline`
+branch at `89deb4ab5ad65b7697481d619d4acbcf34ffa67e`. Its successful GitLab build
+confirms that the configured runner and package access worked for that run.
+Pages publishing remains unverified. The follow-up changes in this checkout are
+local until separately committed and published; the existing remote ref does not
+contain them. See [updating the existing integration](docs/how-to/update-cluster-bringup.md).
 
 Python 3.11+ and Git are required for onboarding. Linux, Bash, curl, and network
 access to NVIDIA Packman and Python package services are required for builds.

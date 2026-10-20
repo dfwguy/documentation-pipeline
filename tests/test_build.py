@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import sys
+from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
@@ -38,3 +39,20 @@ def test_real_repo_docs_build(tmp_path, fixture):
             assert (consumer / path).read_bytes() == content
     assert (consumer / '.gitlab-ci.yml').read_bytes() == adopted_ci
     assert not (consumer / 'docs/conf.py').exists()
+    for page in site.rglob('*.html'):
+        scripts = Scripts()
+        scripts.feed(page.read_text())
+        # No root or nested page may load the script that fetches ../versions.json.
+        assert not any(url.split('?')[0].endswith('/version.js') for url in scripts.sources)
+        assert any(url.split('?')[0].endswith('/social-media.js') for url in scripts.sources)
+
+
+
+class Scripts(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.sources = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'script' and dict(attrs).get('src'):
+            self.sources.append(dict(attrs)['src'])

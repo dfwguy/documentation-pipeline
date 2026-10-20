@@ -1,30 +1,78 @@
 # Validation record
 
-Validated locally on 2026-10-19, branch `feat/copier-docs-pipeline`: **17 tests passed**, including two real repo_docs builds. Copier emitted two expected dirty-local-template warnings for the development checkout; update tests use committed temporary templates.
+## Follow-up integration validation (2026-10-20)
+
+The fixes are local to `feat/copier-docs-pipeline`; **42 tests passed**, including
+two real repo_docs fixture builds. Six expected dirty-local-template warnings
+occurred in disposable current-template trials; update trials used committed
+temporary templates. Nothing was pushed, merged, tagged, or deployed during this
+follow-up.
 
 ```bash
 DOCS_BUILD_INTEGRATION=1 .venv/bin/pytest -q
 ```
 
-The suite covers dry runs, preserving existing CI jobs/includes/comments and
-repo.toml/source bytes, collision handling, malformed configuration, path/symlink
-escapes, source-specific manual decisions, root source selection, existing
-navigation, and Copier updates across two committed template versions. The update
-test preserves consumer comments/navigation and checks for rejected patches.
+Focused coverage includes CommonMark fences nested in lists and block quotes,
+tilde fences and false-positive code examples, initial adoption with existing CI,
+repeat onboarding with byte-identical consumer files, inconsistent-reference
+rejection, and Copier updates from the actual `89deb4a` template contents. Updates
+preserve runner overrides, consumer configuration comments, curated navigation,
+root CI, source files, and adoption notes. A separate reference-change case checks
+saved answers, the shared include, and runtime ref remain aligned.
 
-Two integration cases run the real pinned repo_docs package: a minimal repository
-and a repository with an existing `verify` pipeline and repo.toml. They verify
-HTML output, quoted titles, README directory links, unlabelled code fences, and
-unchanged original files. Set `DOCS_BUILD_INTEGRATION=1` to include these network
-checks; the default test run skips them. The repository's own CI enables them.
+CI rule tables cover default branches with different names, non-default branches,
+MR/tag contexts, non-child sources, and parent branch/MR deduplication. These are
+local expression checks, not a replacement for the target GitLab scheduler.
+The Pages job still requires the successful build artifact and only runs in a
+default-branch child pipeline. Its publication rules were not broadened.
 
-YAML files were parsed locally, and Bash bootstrap scripts passed `bash -n`.
-Live GitLab CI Lint, child-pipeline scheduling, token permissions, runner
-availability, and Pages delivery have not been tested because no shared ref was
-pushed and nothing was published. Validate those on the target GitLab instance
-when remote testing is authorized.
+Two fixtures build real repo_docs HTML. Every generated HTML page is checked for
+removal of `version.js`, while retaining other renderer scripts. The shared CI
+now records the fetched runtime SHA in the job log and build artifact; no previous
+run's SHA has been inferred from a moving branch.
 
-## cluster-bringup trial
+### Trials against the actual consumer revisions
+
+A disposable pre-integration snapshot at `3b46a55` was dry-run inspected, adopted,
+and inspected again. Existing verification and source bytes were preserved; the
+second onboarding run made no changes. The updated parser reports the indented
+`caddyfile` fence in `docs/internal_app_access/how-to/add-caddy-site.md:15`, which
+the earlier scanner missed.
+
+A disposable clone of the current consumer at `72a01e7` was updated using Copier
+from its saved full `89deb4ab5ad65b7697481d619d4acbcf34ffa67e` revision to a committed
+temporary snapshot of the upstream changes, retaining the existing CI branch ref.
+Only the saved template revision/source (temporary local source for the trial)
+and the generated CI maintenance comment changed. All **93 consumer-owned files**
+remained byte-identical, including both runner overrides, curated navigation,
+root CI, Markdown, scripts, and `ADOPTION.md`. No conflict/reject files appeared.
+Repeat onboarding returned `changes: []`, and the strict build passed.
+
+Headless Chrome loaded four pages: root and nested pages both at `/` and under
+`/team/project/`. The local HTTP server recorded **80 requests, zero version
+metadata requests, and zero asset errors**. This reproduces the browser behavior
+behind the metadata defect and verifies the corrected artifact without deploying.
+
+### Remaining limits
+
+The supplied integration findings report a successful GitLab build at the
+published baseline. That establishes working runner, include, runtime-fetch, and
+package access for that run; earlier API 403 responses are not evidence of broken
+CI permissions. The old job's exact runtime SHA/logs and formal allowlist/settings
+were not independently inspected here.
+
+Actual Pages publication, delivery URLs and access controls remain untested. No
+live pipeline was launched for these local changes. Cold-cache package downloads
+and other runner environments were not revalidated. Tests exercise the installed
+pinned renderer using available package caches.
+
+The renderer still lacks PAM, Caddyfile, and Mermaid fence support. Source fixes
+and curated navigation belong to the consumer. Copier can require manual conflict
+resolution if a CI ref change touches the last generated line next to appended
+consumer overrides; same-ref upgrades and overrides were verified automatically.
+Follow the [existing-integration update instructions](../how-to/update-cluster-bringup.md).
+
+## Historical pre-integration trial (2026-10-19)
 
 A disposable copy of the local `nvis-ova/cluster-bringup` checkout was onboarded
 with title `Cluster Bringup`, source directory `.`, and the development CI ref.
@@ -52,15 +100,12 @@ The strict repo_docs build found the following adoption decisions:
 | `docs/internal_app_access/how-to/add-caddy-site.md:15`, `reference/configuration.md:28`, and `tutorial.md:71` | `caddyfile` fences need plain text or a centrally configured lexer |
 
 Warnings are errors, so this trial correctly failed and produced no publishable
-site. These source/rendering decisions were left for adoption; no changes were
-made in the real consumer. Onboarding reports the known unsupported fence labels
+site. These source/rendering decisions were left for adoption at the time. The subsequent
+consumer integration addressed them; this table records the earlier trial. Onboarding reports the known unsupported fence labels
 and directory links without landing pages before application. It does not claim
 to validate every Markdown link or anchor; the real build provides that check.
 
-Use the consumer's current `perflab` and `size/medium` runner tags in child job
-overrides if those remain the intended runners. Confirm the shared project's
-job-token allowlist, existing workflow behavior, Pages availability, and access
-controls before a remote trial.
+The subsequent integration uses `perflab` and `size/medium` runner overrides.
 
 ## Version availability
 

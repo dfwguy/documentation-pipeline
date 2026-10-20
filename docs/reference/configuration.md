@@ -32,11 +32,16 @@ docs-onboard REPOSITORY --title TITLE
 
 Python 3.11+ and Git are required. The default template URL is
 `https://gitlab-master.nvidia.com/nvis-ova/documentation-pipeline.git`.
-`--vcs-ref` selects the Copier template version; `--ci-ref` independently selects
+`--vcs-ref` selects the Copier template version on initial adoption; `--ci-ref` independently selects
 the shared CI/runtime version. Supply both explicitly for production adoption.
 
 The command prints JSON findings, changed paths, manual decisions, and unified
-diffs. Exit `0` means the plan was generated/applied; `2` means inspection or a
+diffs. A repeat run with matching saved settings checks the installed config,
+navigation, trigger, and shared include/runtime references; it returns an empty
+change list without fetching a new template or reformatting files. Consumer
+runner overrides and navigation are preserved. A settings mismatch, missing
+integration file, or reference drift requires manual reconciliation with Copier.
+Exit `0` means the plan was generated/applied or an existing adoption verified; `2` means inspection or a
 conflict requires intervention. Dry run never writes to the consumer unless
 `--report` explicitly names a file there. Template fetching may use network and
 Copier caches. Inspection conflicts stop all planned writes; filesystem failures
@@ -63,7 +68,9 @@ pipelines, avoiding duplicate branch jobs when an MR is open. Existing workflow
 rules remain authoritative. The child has independent `build` and `deploy`
 stages. Defaults from other root jobs do not affect these jobs.
 
-Build artifacts are `.docs-build/site/`, retained for one week. The conventional
+Build artifacts are `.docs-build/site/` and `.docs-build/runtime-sha.txt`, retained
+for one week. The SHA file and job log record the exact fetched runtime commit;
+the requested branch alone cannot establish which commit a past run used. The conventional
 `pages` job copies them to `public/` and publishes only on the default branch.
 This uses the longstanding GitLab Pages job convention rather than newer
 `pages.publish` syntax. Tags do not publish; MR and other branch builds retain
@@ -76,7 +83,7 @@ and Python package services. The shared private project must allow inbound
 `CI_JOB_TOKEN` access from the consumer (or its group), and the pipeline user
 must have permission to read it. Git uses a credential helper with the ephemeral
 job token; no token is stored in the remote URL or generated consumer files.
-Use GitLab CI Lint against the target server after the ref exists. Confirm Pages
+Use GitLab CI Lint against the target server for the selected ref. Confirm Pages
 is enabled and set its access controls before publishing internal documentation.
 
 ## Runtime
@@ -93,7 +100,14 @@ staged navigation. Links outside the selected source tree need a broader source
 directory. Assets inside the source tree are copied; HTML use is subject to
 Sphinx's normal asset handling. Failed builds fail CI and do not publish.
 Warnings remain errors. Directory links resolve to README/index pages centrally;
-unlabelled code fences use plain text.
+unlabelled code fences use plain text. The single exported site does not load
+repo_docs' version-selector script: that script expects a parent `versions.json`
+and a multi-version directory layout that Pages artifacts do not provide.
+
+Onboarding uses CommonMark parsing to report known unsupported `pam`, `caddyfile`,
+and `mermaid` fence labels, including lists, block quotes, and tilde fences. Reports
+include source lines. These labels remain unsupported by the pinned renderer;
+this check is not a complete lexer, Markdown-link, or anchor validator.
 
 Pinned dependencies: Copier `9.19.1`, repo_man `1.86.0`, repo_docs `0.39.2`,
 Sphinx package `4.5.0.2-py3.10-${platform}`, Packman `7.5`, and its Python

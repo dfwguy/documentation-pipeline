@@ -18,10 +18,12 @@ stages: [build, deploy]
       -c 'credential.helper=!f() { echo username=gitlab-ci-token; echo "password=$CI_JOB_TOKEN"; }; f'
       fetch --depth 1 origin "$DOCS_PIPELINE_REF"
     - git -C .docs-build/runtime checkout --detach FETCH_HEAD
+    - git -C .docs-build/runtime rev-parse HEAD > .docs-build/runtime-sha.txt
+    - cat .docs-build/runtime-sha.txt
   script:
     - python3 .docs-build/runtime/runtime/build.py "$CI_PROJECT_DIR"
   artifacts:
-    paths: [.docs-build/site/]
+    paths: [.docs-build/site/, .docs-build/runtime-sha.txt]
     expire_in: 1 week
 
 docs:build:

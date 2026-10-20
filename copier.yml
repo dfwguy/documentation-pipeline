@@ -1,0 +1,23 @@
+_min_copier_version: "9.19.1"
+_subdirectory: template
+_answers_file: .copier-docs-answers.yml
+
+docs_title:
+  type: str
+  help: Documentation title
+  default: Project documentation
+docs_source_dir:
+  type: str
+  help: Existing Markdown directory, relative to repository root
+  default: docs
+docs_nav:
+  type: str
+  help: Navigation file, relative to repository root
+  default: .docs-pipeline/navigation.rst
+ci_project:
+  type: str
+  default: nvis-ova/documentation-pipeline
+ci_ref:
+  type: str
+  help: Shared CI and runtime Git ref (branch, tag, or commit)
+  default: feat/copier-docs-pipeline

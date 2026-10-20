@@ -1,0 +1,9 @@
+# This child pipeline isolates docs stages from the existing parent pipeline.
+include:
+  - project: {{ ci_project | to_json }}
+    ref: {{ ci_ref | to_json }}
+    file: /ci/docs.gitlab-ci.yml
+
+variables:
+  DOCS_PIPELINE_PROJECT: {{ ci_project | to_json }}
+  DOCS_PIPELINE_REF: {{ ci_ref | to_json }}

@@ -1,0 +1,8 @@
+# Existing pipeline must survive onboarding.
+include: other.yml
+stages: [verify]
+variables:
+  KEEP_ME: "yes"
+verify:
+  stage: verify
+  script: ["echo verify"]

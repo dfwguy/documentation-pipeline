@@ -1,0 +1,46 @@
+# Include from the consumer's child pipeline with an explicit Git ref.
+stages: [build, deploy]
+
+.docs-rules:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "parent_pipeline"'
+
+.build-docs:
+  image: ubuntu:24.04
+  inherit:
+    default: false
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends ca-certificates git curl python3
+    - git init .docs-build/runtime
+    - git -C .docs-build/runtime remote add origin "${CI_SERVER_URL}/${DOCS_PIPELINE_PROJECT}.git"
+    - >-
+      git -C .docs-build/runtime
+      -c 'credential.helper=!f() { echo username=gitlab-ci-token; echo "password=$CI_JOB_TOKEN"; }; f'
+      fetch --depth 1 origin "$DOCS_PIPELINE_REF"
+    - git -C .docs-build/runtime checkout --detach FETCH_HEAD
+  script:
+    - python3 .docs-build/runtime/runtime/build.py "$CI_PROJECT_DIR"
+  artifacts:
+    paths: [.docs-build/site/]
+    expire_in: 1 week
+
+docs:build:
+  extends: [.build-docs, .docs-rules]
+  stage: build
+
+# The conventional job name and public/ artifact support older self-managed GitLab.
+pages:
+  image: ubuntu:24.04
+  inherit:
+    default: false
+  stage: deploy
+  needs:
+    - job: docs:build
+      artifacts: true
+  script:
+    - test -f .docs-build/site/index.html
+    - cp -a .docs-build/site public
+  artifacts:
+    paths: [public/]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "parent_pipeline"'

@@ -1,0 +1,5 @@
+# Existing application settings must survive byte for byte.
+[repo]
+name = "example"
+[repo_build]
+enabled = true
